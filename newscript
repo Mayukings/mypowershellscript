@@ -1,0 +1,37 @@
+# Connect to Azure with managed identity
+$azureContext = Connect-AzAccount -Identity 
+
+# Set the desired subscription context
+Set-AzContext -Subscription "59e6262e-1728-4738-8bb3-055b62fe5cba"
+
+# Get the access token for Microsoft Graph
+$graphToken = (Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com").Token
+
+# Prepare the headers for the REST API call
+$headers = @{
+    'Authorization' = "Bearer $graphToken"
+    'Content-Type' = 'application/json'
+}
+
+# Service principal name and new password
+$servicePrincipalName = "testresetpassword@msazurebossgmail.onmicrosoft.com"
+$newPassword = "12365dsdfafagerewerd"
+
+# Prepare the request body without the unsupported property
+$requestBody = @{
+    passwordProfile = @{
+        password = $newPassword
+        # Removed forceChangePasswordNextLogin
+    }
+} | ConvertTo-Json
+
+# Create the URI for the PATCH request
+$uri = "https://graph.microsoft.com/v1.0/users/$servicePrincipalName"
+
+# Invoke the REST method to update the password
+try {
+    $result = Invoke-RestMethod -Uri $uri -Headers $headers -Method Patch -Body $requestBody
+    Write-Output "Password for user $servicePrincipalName has been reset successfully."
+} catch {
+    Write-Error "An error occurred: $_"
+}
